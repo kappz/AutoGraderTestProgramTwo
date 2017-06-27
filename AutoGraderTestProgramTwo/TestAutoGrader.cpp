@@ -1,3 +1,6 @@
+#pragma once
+#ifndef DNAMANIP
+#define DNAMANIP
 /*
 Author: Peter O'Donohue
 Creation Date: 06/12/17
@@ -46,10 +49,10 @@ public:
 	DNA substr(int begin, int width) const;
 	//  returns the substr and from begin, returns the next width acids
 	bool unitTestPlus();  // tests sum of two DNA strands of equal length
-	bool unitTestPlusDiffLengths();  // tests sum of two DNA strands of unequal length
 	bool unitTestSubstr();  // tests return a sustring of a strand
 	bool unitTestFind();  // tests finding a substring and returning its position
 	bool unitTestReverse();  // tests reverse function
+	bool unitTestEqualComp();  // tests == overload operator
 
 private:
 	Node *strand;
@@ -125,7 +128,7 @@ DNA::~DNA()
 	Node *deletePtr = this->strand;
 	while (deletePtr != nullptr)
 	{
-		this->strand = strand->next;
+		this->strand = this->strand->next;
 		delete deletePtr;
 		deletePtr = this->strand;
 	}
@@ -142,20 +145,28 @@ bool DNA::operator==(const DNA& rhs) const
 	*/
 	Node *rhsWalker = rhs.strand;
 	Node *lhsWalker = this->strand;
-	if (length == rhs.length)  // checks for equality in strand length
+	if (lhsWalker == nullptr && rhsWalker == nullptr)
 	{
-		while (lhsWalker->next != nullptr)
+		return true;
+	}
+	else if ((lhsWalker == nullptr && rhsWalker != nullptr) || (lhsWalker != nullptr && rhsWalker == nullptr))
+		return false;
+	else
+	{
+		while (lhsWalker->acid == rhsWalker->acid)
 		{
-			if (lhsWalker->acid == rhsWalker->acid)
+			if (lhsWalker->next == nullptr && rhsWalker->next == nullptr)
+				return true;
+			else
 			{
 				lhsWalker = lhsWalker->next;
 				rhsWalker = rhsWalker->next;
 			}
-			else
+			if ((lhsWalker == nullptr && rhsWalker != nullptr) || (lhsWalker != nullptr && rhsWalker == nullptr))
 				return false;
 		}
 	}
-	return true;
+	return false;
 }
 
 
@@ -174,6 +185,11 @@ DNA DNA::operator=(const DNA& rhs)
 	Node *deleteWalker = this->strand;    // walks down delete strand
 	Node *deletePtr = deleteWalker;  // deletes the nodes
 	this->length = rhs.length;
+	if (rhs.strand == nullptr)  // if rhs contains zero elements and holds length of zero
+	{
+		this->strand = nullptr;
+		return *this;
+	}
 	this->strand = new Node(rhsWalker->acid);
 	newWalker = this->strand;
 	rhsWalker = rhsWalker->next;
@@ -227,7 +243,7 @@ ostream& operator<<(ostream & out, DNA rhs)
 	Node *walker = rhs.strand;
 	while (walker != nullptr)
 	{
-		out << walker->acid << " ";
+		out << walker->acid;
 		walker = walker->next;
 	}
 	return out;
@@ -244,6 +260,8 @@ DNA DNA::reverse() const
 	Node *front = nullptr;
 	Node *back = nullptr;
 	Node *newWalker = this->strand;
+	if (newWalker == nullptr)
+		return reverseDNA;
 	reverseDNA.strand = new Node(newWalker->acid);
 	back = reverseDNA.strand;
 	newWalker = newWalker->next;
@@ -270,7 +288,7 @@ DNA DNA::substr(int begin, int width) const
 	Node *search = this->strand;
 	if (begin + width <= length)  // checks if withing bounds
 	{
-		for (int i = 0; i < begin - 1; ++i)
+		for (int i = 0; i < begin; ++i)
 		{
 			search = search->next;
 		}
@@ -294,7 +312,7 @@ int DNA::find(const DNA & rhs)
 	POST: if subStr is found, function returns position of first character
 	returns -1 if Substr is not found
 	*/
-	int count = 1;  // keeps count of string location
+	int count = 0;  // keeps count of string location
 	int position = 0;  // stores starting position
 	Node *selfWalker = this->strand;
 	Node *rhsWalker = rhs.strand;
@@ -309,10 +327,12 @@ int DNA::find(const DNA & rhs)
 			{
 				tempWalker = tempWalker->next;
 				rhsWalker = rhsWalker->next;
-				if (rhsWalker == nullptr)
+				if (rhsWalker == nullptr || (rhsWalker == nullptr && tempWalker == nullptr))
 				{
 					return position;
 				}
+				if (tempWalker == nullptr && rhsWalker != nullptr)
+					return -1;
 			}
 		}
 		else
@@ -328,17 +348,15 @@ int DNA::find(const DNA & rhs)
 
 bool DNA::unitTestPlus()
 {
-	/*
-	PRE: function for operator+ has been defined
-	POST: the function for operator+ has resulted in a pass or fail
-	control returns to main
-	*/
-	DNA c;
+	DNA c, f, g, h, i, j;
 	DNA a("ACGT");
 	DNA b("CGTA");
 	DNA d("ACGTCGTA");
-	c = a + b;
-	if (c == d)
+	DNA e("ACGTACGTCGTA");
+	c = a + b;  // sum two strings of equal length
+	f = a + d;  // sum two strings of unequal length
+	i = g + h;  // sum two strings each with zero elements and zero length
+	if (c == d && f == e && i == j)
 	{
 		return true;
 	}
@@ -346,41 +364,20 @@ bool DNA::unitTestPlus()
 		return false;
 }
 
-bool DNA::unitTestPlusDiffLengths()
-{
-	/*
-	PRE: function for overload operator+ has been defined
-	POST: function for operator+ has been tested for
-	two strands of unequal length
-	control returns to main
-	*/
-	DNA a, b;
-	DNA c("ACCTAG");
-	DNA d("TCGA");
-	DNA e("ACCTAGTCGA");
-	DNA f("TCGAACCTAG");
-	a = c + d;
-	b = d + c;
-	if (a == e && b == f)
-		return true;
-	else
-		return false;
-
-}
-
 bool DNA::unitTestSubstr()
 {
-	/*
-	PRE: substr function has been defined
-	object invokes function call
-	POST: substr function tested, result returned along
-	with control to the main
-	*/
 	DNA a = "ACGAAGTCAGGGT";
 	DNA b = "GGGT";
-	DNA c;
-	if (b == a.substr(10, 4))
+	DNA c = "G";
+	/*
+	test substr finishing at string length
+	test substr beginning with string first char
+	test substr running entire string length
+	*/
+	if (b == a.substr(10, 4) && c == a.substr(0, 1) && a == a.substr(0, 14))
+	{
 		return true;
+	}
 	else
 		return false;
 
@@ -388,16 +385,12 @@ bool DNA::unitTestSubstr()
 
 bool DNA::unitTestFind()
 {
-	/*
-	PRE: function for find has been defined
-	POST: find function has been tested
-	result and control return to main
-	*/
-	int position = 0;
 	DNA a("ACGT");
 	DNA b("ACTTGACTAGCAACGT");
-	position = b.find(a);
-	if (position != -1)
+	DNA d("ACTT");
+	DNA c("ACGT");
+	DNA e("CTA");
+	if (a.find(c) == 0 && b.find(a) == 12 && a.find(b) == -1 && b.find(d) == 0 && b.find(e) == 6)
 		return true;
 	else
 		return false;
@@ -405,21 +398,34 @@ bool DNA::unitTestFind()
 
 bool DNA::unitTestReverse()
 {
-	/*
-	PRE: function for reverse defined
-	POST: reverse tested, result and control pass
-	to the main
-	*/
 	DNA a("GCATGGCT");
 	DNA b("TCGGTACG");
-	DNA c;
+	DNA c("T");
+	DNA d("T");
+	DNA e, f, g, h;
 
-	c = a.reverse();
-	if (c == b)
+	e = a.reverse();
+	f = d.reverse();
+	if (e == c && f == c)
 		return true;
 	else
 		return false;
 }
+
+bool DNA::unitTestEqualComp()
+{
+	DNA a, b;
+	DNA c("ABGT");
+	DNA d("ABGT");
+	DNA e("ABGTS");
+	if (a == b && c == d && (e == c))
+		return true;
+	else
+		return false;
+
+}
+
+#endif
 
 int main()
 {
@@ -506,5 +512,7 @@ int main()
 		}
 		cin >> oper;
 	}
+
+
 	return 0;
 }
